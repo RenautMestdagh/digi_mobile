@@ -8,19 +8,43 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
   String? _selectedVerificationMethod;
   bool _isLoginAttempted = false;
   bool _isLoading = false;
 
-  void _performLogin() async {
+  String? _emailErrorText;
+  String? _passwordErrorText;
 
+  @override
+  void dispose() {
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _performLogin() async {
     setState(() {
       _isLoginAttempted = true;
     });
 
-    if (_selectedVerificationMethod == null) {
+    // Check if fields are empty and set error text
+    if (_emailController.text.isEmpty) {
+      setState(() {
+        _emailErrorText = 'Please enter your email.';
+      });
+    }
+
+    if (_passwordController.text.isEmpty) {
+      setState(() {
+        _passwordErrorText = 'Please enter your password.';
+      });
+    }
+
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _selectedVerificationMethod == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select a verification method.')),
+        SnackBar(content: Text('Please complete all fields.')),
       );
       return;
     }
@@ -98,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return GestureDetector(
       onTap: () {
         // Hide the keyboard when tapping outside the input fields
-        FocusScope.of(context).unfocus();
+        FocusScope.of(context).requestFocus(FocusNode());
       },
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -125,17 +149,36 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Email Input
                 TextField(
                   controller: _emailController,
+                  focusNode: _emailFocusNode,  // Attach focus node
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.grey[200],
                     labelText: 'Email',
+                    errorText: _emailErrorText,  // Dynamically set errorText
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
                     ),
-                    prefixIcon: Icon(Icons.email, color: Color(0xFF007aff)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.transparent)
+                    ),
+                    errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.red)
+                    ), // error color
+                    prefixIcon: Icon(
+                      Icons.email,
+                      color: _emailErrorText != null
+                          ? Colors.red
+                          : Color(0xFF007aff), // Icon color follows the error state
+                    ),
                   ),
+                  onTap: () {
+                    setState(() {
+                      _emailErrorText = null;  // Reset error when tapping
+                    });
+                  },
                 ),
 
                 SizedBox(height: 16),
@@ -143,17 +186,36 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Password Input
                 TextField(
                   controller: _passwordController,
+                  focusNode: _passwordFocusNode,  // Attach focus node
                   obscureText: true,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.grey[200],
                     labelText: 'Password',
+                    errorText: _passwordErrorText,  // Dynamically set errorText
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
                     ),
-                    prefixIcon: Icon(Icons.lock, color: Color(0xFF007aff)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.transparent)
+                    ),
+                    errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.red)
+                    ), // error color
+                    prefixIcon: Icon(
+                      Icons.lock,
+                      color: _passwordErrorText != null
+                          ? Colors.red
+                          : Color(0xFF007aff), // Icon color follows the error state
+                    ),
                   ),
+                  onTap: () {
+                    setState(() {
+                      _passwordErrorText = null;  // Reset error when tapping
+                    });
+                  },
                 ),
 
                 SizedBox(height: 24),
