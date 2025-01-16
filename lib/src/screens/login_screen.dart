@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../widgets/progress_indicator.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -8,61 +6,288 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-
-  @override
-  void initState() {
-    super.initState();
-    _performLogin();
-  }
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  String? _selectedVerificationMethod;
+  bool _isLoginAttempted = false;
+  bool _isLoading = false;
 
   void _performLogin() async {
-    await AuthService.fetchCsrfToken();
-    await AuthService.login(email, password);
-    await AuthService.sendCode();
-    code = (await _showCodeDialog())!;
-    await AuthService.finalizeLogin(code);
-    await AuthService.signout();
+
+    setState(() {
+      _isLoginAttempted = true;
+    });
+
+    if (_selectedVerificationMethod == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select a verification method.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Simulate login process
+    await Future.delayed(Duration(seconds: 2));
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    // TODO: Add actual login logic
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Login successful!')),
+    );
   }
 
-
-  Future<String?> _showCodeDialog() async {
-    TextEditingController controller = TextEditingController();
-    String userCode = '';
-
-    return showDialog<String>(
+  void _selectVerificationMethod() {
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false, // Prevent dismissal by tapping outside
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
+      ),
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Enter the code sent to your email:'),
-          content: TextField(
-            controller: controller,
-            decoration: InputDecoration(hintText: 'Enter code'),
-            keyboardType: TextInputType.number,
-            autofocus: true, // Focuses the input field immediately
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Select Verification Method',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 16),
+              ListTile(
+                leading: Icon(Icons.code, color: Color(0xFF007aff)),
+                title: Text('Enter Code Manually'),
+                subtitle: Text('Input the verification code sent to your email.'),
+                trailing: Icon(Icons.info_outline, color: Colors.grey),
+                onTap: () {
+                  setState(() {
+                    _selectedVerificationMethod = 'Manual Code Entry';
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.forward_to_inbox, color: Color(0xFF007aff)),
+                title: Text('Forward Email to App'),
+                subtitle: Text('Forward the email to a mailbox the app can access.'),
+                trailing: Icon(Icons.info_outline, color: Colors.grey),
+                onTap: () {
+                  setState(() {
+                    _selectedVerificationMethod = 'Email Forwarding';
+                  });
+                  Navigator.pop(context);
+                },
+              ),
+            ],
           ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Submit'),
-              onPressed: () {
-                userCode = controller.text.trim(); // Get the entered code
-                Navigator.of(context).pop(userCode); // Close the dialog and return the code
-              },
-            ),
-          ],
         );
       },
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Digi Login')),
-      body: Center(
-        child: ProgressIndicatorWidget(), // A custom widget for showing a progress indicator
+    return GestureDetector(
+      onTap: () {
+        // Hide the keyboard when tapping outside the input fields
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Logo
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: Image.asset(
+                    'assets/icon/icon.png',
+                    height: 100,
+                    width: 100,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+
+                SizedBox(height: 32),
+
+                // Email Input
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.grey[200],
+                    labelText: 'Email',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Icon(Icons.email, color: Color(0xFF007aff)),
+                  ),
+                ),
+
+                SizedBox(height: 16),
+
+                // Password Input
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.grey[200],
+                    labelText: 'Password',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Icon(Icons.lock, color: Color(0xFF007aff)),
+                  ),
+                ),
+
+                SizedBox(height: 24),
+
+                // Verification Selector
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _selectedVerificationMethod == null && _isLoginAttempted
+                            ? Colors.red
+                            : Colors.grey[300]!,
+                      ),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Icon(
+                                _selectedVerificationMethod == null
+                                    ? Icons.mail_lock
+                                    : _selectedVerificationMethod == 'Manual Code Entry'
+                                    ? Icons.code
+                                    : Icons.forward_to_inbox,
+                                color: _selectedVerificationMethod == null && _isLoginAttempted
+                                    ? Colors.red
+                                    : Color(0xFF007aff),
+                              ),
+                              SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  _selectedVerificationMethod == null
+                                      ? 'Verification method'
+                                      : '$_selectedVerificationMethod',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: _selectedVerificationMethod == null && _isLoginAttempted
+                                        ? Colors.red
+                                        : _selectedVerificationMethod == null
+                                        ? Color.fromRGBO(107, 117, 117, 1.0)
+                                        : Colors.black,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _selectVerificationMethod,
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, color: Color(0xFF007aff), size: 18),
+                              SizedBox(width: 4),
+                              Text(
+                                _selectedVerificationMethod == null ? 'Select' : 'Change',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF007aff),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+
+                SizedBox(height: 24),
+
+                // Login Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _performLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _isLoading ? Colors.grey : Color(0xFF007aff), // Button color
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      shadowColor: Colors.black26,
+                      elevation: 5,
+                    ),
+                    child: _isLoading
+                        ? SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                        : Text(
+                      'Login',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 16),
+
+                // Forgot Password
+                GestureDetector(
+                  onTap: () {
+                    // TODO:
+                  },
+                  child: Text(
+                    'Forgot Password?',
+                    style: TextStyle(
+                      color: Color(0xFF007aff),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
