@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
@@ -11,11 +13,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
   String? _selectedVerificationMethod;
-  bool _isLoginAttempted = false;
   bool _isLoading = false;
+  bool _isPasswordVisible = false; // To toggle password visibility
 
   String? _emailErrorText;
   String? _passwordErrorText;
+  bool _verificationError = false;
 
   @override
   void dispose() {
@@ -25,9 +28,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _performLogin() async {
-    setState(() {
-      _isLoginAttempted = true;
-    });
 
     // Check if fields are empty and set error text
     if (_emailController.text.isEmpty) {
@@ -42,9 +42,18 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     }
 
+    if (_selectedVerificationMethod == null) {
+      setState(() {
+        _verificationError = true;
+      });
+    }
+
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _selectedVerificationMethod == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please complete all fields.')),
+        SnackBar(
+          content: Text('Please complete all fields.'),
+          duration: Duration(milliseconds: 2500),
+        ),
       );
       return;
     }
@@ -67,6 +76,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _selectVerificationMethod() {
+    setState(() {
+      _verificationError = false;
+    });
+
     showModalBottomSheet(
       context: context,
       shape: RoundedRectangleBorder(
@@ -90,7 +103,29 @@ class _LoginScreenState extends State<LoginScreen> {
                 leading: Icon(Icons.code, color: Color(0xFF007aff)),
                 title: Text('Enter Code Manually'),
                 subtitle: Text('Input the verification code sent to your email.'),
-                trailing: Icon(Icons.info_outline, color: Colors.grey),
+                trailing: GestureDetector(
+                  onTap: () {
+                    // Show the modal with additional information when the info icon is tapped
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text('Information'),
+                          content: Text('Enter the confirmation code you\'ll receive in your inbox manually.'),
+                          actions: <Widget>[
+                            TextButton(
+                              child: Text('Close'),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  child: Padding(padding: EdgeInsets.all(5), child: Icon(Icons.info_outline, color: Colors.grey)),
+                ),
                 onTap: () {
                   setState(() {
                     _selectedVerificationMethod = 'Manual Code Entry';
@@ -102,7 +137,29 @@ class _LoginScreenState extends State<LoginScreen> {
                 leading: Icon(Icons.forward_to_inbox, color: Color(0xFF007aff)),
                 title: Text('Forward Email to App'),
                 subtitle: Text('Forward the email to a mailbox the app can access.'),
-                trailing: Icon(Icons.info_outline, color: Colors.grey),
+                trailing: GestureDetector(
+                  onTap: () {
+                    // Show the modal with additional information when the info icon is tapped
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: Text('Information'),
+                          content: Text('Enter the confirmation code you\'ll receive in your inbox manually.'),
+                          actions: <Widget>[
+                            TextButton(
+                              child: Text('Close'),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  child: Padding(padding: EdgeInsets.all(5), child: Icon(Icons.info_outline, color: Colors.grey)),
+                ),
                 onTap: () {
                   setState(() {
                     _selectedVerificationMethod = 'Email Forwarding';
@@ -123,6 +180,9 @@ class _LoginScreenState extends State<LoginScreen> {
       onTap: () {
         // Hide the keyboard when tapping outside the input fields
         FocusScope.of(context).requestFocus(FocusNode());
+        setState(() {
+          _isPasswordVisible = false;
+        });
       },
       child: Scaffold(
         backgroundColor: Colors.white,
@@ -149,34 +209,29 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Email Input
                 TextField(
                   controller: _emailController,
-                  focusNode: _emailFocusNode,  // Attach focus node
+                  focusNode: _emailFocusNode,
+                  // Attach focus node
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.grey[200],
                     labelText: 'Email',
-                    errorText: _emailErrorText,  // Dynamically set errorText
+                    errorText: _emailErrorText,
+                    // Dynamically set errorText
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.transparent)
-                    ),
-                    errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red)
-                    ), // error color
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.transparent)),
+                    errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red)),
+                    // error color
                     prefixIcon: Icon(
                       Icons.email,
-                      color: _emailErrorText != null
-                          ? Colors.red
-                          : Color(0xFF007aff), // Icon color follows the error state
+                      color: _emailErrorText != null ? Colors.red : Color(0xFF007aff), // Icon color follows the error state
                     ),
                   ),
                   onTap: () {
                     setState(() {
-                      _emailErrorText = null;  // Reset error when tapping
+                      _emailErrorText = null; // Reset error when tapping
                     });
                   },
                 ),
@@ -186,34 +241,49 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Password Input
                 TextField(
                   controller: _passwordController,
-                  focusNode: _passwordFocusNode,  // Attach focus node
-                  obscureText: true,
+                  focusNode: _passwordFocusNode,
+                  // Attach focus node
+                  obscureText: !_isPasswordVisible,
+                  // Toggle visibility based on _isPasswordVisible
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.grey[200],
                     labelText: 'Password',
-                    errorText: _passwordErrorText,  // Dynamically set errorText
+                    errorText: _passwordErrorText,
+                    // Dynamically set errorText
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.transparent)
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.transparent),
                     ),
                     errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.red)
-                    ), // error color
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.red),
+                    ),
+                    // error color
                     prefixIcon: Icon(
                       Icons.lock,
-                      color: _passwordErrorText != null
-                          ? Colors.red
-                          : Color(0xFF007aff), // Icon color follows the error state
+                      color: _passwordErrorText != null ? Colors.red : Color(0xFF007aff), // Icon color follows the error state
                     ),
+                    suffixIcon: _passwordFocusNode.hasFocus // Show eye icon only when field is focused
+                        ? GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible; // Toggle password visibility
+                              });
+                            },
+                            child: Icon(
+                              _isPasswordVisible ? Icons.visibility_off : Icons.visibility, // Toggle eye icon
+                              color: _passwordErrorText != null ? Colors.red : Color(0xff7a7a7a),
+                            ),
+                          )
+                        : null, // No suffix icon if the TextField is not focused
                   ),
                   onTap: () {
                     setState(() {
-                      _passwordErrorText = null;  // Reset error when tapping
+                      _passwordErrorText = null; // Reset error when tapping
                     });
                   },
                 ),
@@ -221,78 +291,81 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(height: 24),
 
                 // Verification Selector
-                Align(
-                  alignment: Alignment.centerLeft,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: _selectedVerificationMethod == null && _isLoginAttempted
-                            ? Colors.red
-                            : Colors.grey[300]!,
-                      ),
                     ),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _selectVerificationMethod,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _verificationError ? Colors.red : Colors.grey[300]!,
+                            ),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Icon(
-                                _selectedVerificationMethod == null
-                                    ? Icons.mail_lock
-                                    : _selectedVerificationMethod == 'Manual Code Entry'
-                                    ? Icons.code
-                                    : Icons.forward_to_inbox,
-                                color: _selectedVerificationMethod == null && _isLoginAttempted
-                                    ? Colors.red
-                                    : Color(0xFF007aff),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _selectedVerificationMethod == null
+                                          ? Icons.mail_lock
+                                          : _selectedVerificationMethod == 'Manual Code Entry'
+                                              ? Icons.code
+                                              : Icons.forward_to_inbox,
+                                      color: _verificationError ? Colors.red : Color(0xFF007aff),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        _selectedVerificationMethod == null ? 'Verification method' : '$_selectedVerificationMethod',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                          color: _verificationError
+                                              ? Colors.red
+                                              : _selectedVerificationMethod == null
+                                                  ? Color.fromRGBO(107, 117, 117, 1.0)
+                                                  : Colors.black,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  _selectedVerificationMethod == null
-                                      ? 'Verification method'
-                                      : '$_selectedVerificationMethod',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: _selectedVerificationMethod == null && _isLoginAttempted
-                                        ? Colors.red
-                                        : _selectedVerificationMethod == null
-                                        ? Color.fromRGBO(107, 117, 117, 1.0)
-                                        : Colors.black,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                              Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit, color: Color(0xFF007aff), size: 18),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      _selectedVerificationMethod == null ? 'Select' : 'Change',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Color(0xFF007aff),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        TextButton(
-                          onPressed: _selectVerificationMethod,
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit, color: Color(0xFF007aff), size: 18),
-                              SizedBox(width: 4),
-                              Text(
-                                _selectedVerificationMethod == null ? 'Select' : 'Change',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF007aff),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-
 
                 SizedBox(height: 24),
 
@@ -302,7 +375,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _performLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isLoading ? Colors.grey : Color(0xFF007aff), // Button color
+                      backgroundColor: _isLoading ? Colors.grey : Color(0xFF007aff),
+                      // Button color
                       padding: EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
@@ -312,21 +386,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: _isLoading
                         ? SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
                         : Text(
-                      'Login',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                            'Login',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
 
