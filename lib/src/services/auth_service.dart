@@ -74,7 +74,7 @@ class AuthService {
     }
   }
 
-  static Future<void> finalizeLogin(String code) async {
+  static Future<bool> finalizeLogin(String code) async {
     try {
       // Prepare the multipart request for finalizing login
       final uri = Uri.parse(loginUrl);
@@ -93,11 +93,14 @@ class AuthService {
       final sessionToken = getCookie('__Secure-authjs.session-token');
       if (sessionToken != null) {
         print('Login finalized successfully: $sessionToken');
+        return true;
       } else {
         print('Authentication failed. No session token found.');
+        return false;
       }
     } catch (error) {
       print('Error finalizing login: $error');
+      return false;
     }
   }
 

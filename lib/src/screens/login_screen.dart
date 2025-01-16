@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import '../services/auth_service.dart';
+import '../services/toast_service.dart';
 import 'mail_auth_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -46,6 +47,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _performLogin() async {
+    FocusScope.of(context).requestFocus(FocusNode());
+
     // Validate inputs
     bool hasError = false;
     setState(() {
@@ -56,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (hasError) {
-      showToast('Please complete all fields.');
+      ToastService.showToast('Please complete all fields.');
       return;
     }
 
@@ -71,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
       bool loginSuccess = await AuthService.login(_emailController.text, _passwordController.text);
 
       if (!loginSuccess) {
-        showToast("Login failed", isSuccess: false);
+        ToastService.showToast("Login failed", isSuccess: false);
         setState(() {
           _isLoading = false;
         });
@@ -90,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (error) {
       // Handle errors gracefully
-      showToast("An error occurred. Please try again.", isSuccess: false);
+      ToastService.showToast("An error occurred. Please try again.", isSuccess: false);
     } finally {
       // Reset loading state
       Future.delayed(Duration(milliseconds: 100), () {  // delayed because of Navigation push animation
@@ -102,6 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _selectVerificationMethod() {
+    FocusScope.of(context).requestFocus(FocusNode());
     setState(() {
       _verificationError = false;
     });
@@ -256,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: _emailErrorText != null ? Colors.red : Color(0xFF007aff), // Icon color follows the error state
                       ),
                     ),
-                    onTap: () {
+                    onChanged: (val) {
                       setState(() {
                         _emailErrorText = null; // Reset error when tapping
                       });
@@ -307,7 +311,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             )
                           : null, // No suffix icon if the TextField is not focused
                     ),
-                    onTap: () {
+                    onChanged: (val) {
                       setState(() {
                         _passwordErrorText = null; // Reset error when tapping
                       });
@@ -454,52 +458,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  void showToast(String message, {bool? isSuccess}) {
-    // Determine the style based on isSuccess
-    Color backgroundColor;
-    IconData? icon;
-
-    if (isSuccess == true) {
-      backgroundColor = Colors.greenAccent;
-      icon = Icons.check;
-    } else if (isSuccess == false) {
-      backgroundColor = Colors.redAccent;
-      icon = Icons.close;
-    } else {
-      backgroundColor = Colors.grey;
-      icon = null;
-    }
-
-    // Create the toast widget
-    Widget toast = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(25.0),
-        color: backgroundColor,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, color: Colors.white),
-            const SizedBox(width: 12.0),
-          ],
-          Text(
-            message,
-            style: const TextStyle(color: Colors.white),
-          ),
-        ],
-      ),
-    );
-
-    // Show the toast
-    fToast.showToast(
-      child: toast,
-      gravity: ToastGravity.BOTTOM,
-      toastDuration: const Duration(seconds: 3),
     );
   }
 
