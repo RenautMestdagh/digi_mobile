@@ -22,7 +22,7 @@ class AuthService {
     }
   }
 
-  static Future<void> login(String email, String password) async {
+  static Future<bool> login(String email, String password) async {
     try {
       // Prepare the multipart request
       final uri = Uri.parse(loginUrl);
@@ -44,15 +44,17 @@ class AuthService {
 
       if (loginResponse['errors']?['_form']?.contains('You already signed in') == true) {
         print('User is already logged in');
-        return;
+        return true;
       }
 
       accessToken = loginResponse['access_token'];
       refreshToken = loginResponse['refresh_token'];
 
       print('Login successful');
+      return true;
     } catch (error) {
       print('Error during login: $error');
+      return false;
     }
   }
 

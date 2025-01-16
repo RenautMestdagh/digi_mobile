@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+
+import '../services/auth_service.dart';
+import 'mail_auth_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,13 +16,27 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final FocusNode _emailFocusNode = FocusNode();
   final FocusNode _passwordFocusNode = FocusNode();
-  String? _selectedVerificationMethod;
+  int? _selectedVerificationMethod;
   bool _isLoading = false;
   bool _isPasswordVisible = false; // To toggle password visibility
 
   String? _emailErrorText;
   String? _passwordErrorText;
   bool _verificationError = false;
+
+  late FToast fToast;
+
+  static const Map<int, String> verificationMethods = {
+    1: 'Enter Code Manually',
+    2: 'Forward Email to App',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    fToast = FToast();
+    fToast.init(context);
+  }
 
   @override
   void dispose() {
@@ -28,51 +46,59 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _performLogin() async {
+    // Validate inputs
+    bool hasError = false;
+    setState(() {
+      _emailErrorText = _emailController.text.isEmpty ? 'Please enter your email.' : null;
+      _passwordErrorText = _passwordController.text.isEmpty ? 'Please enter your password.' : null;
+      _verificationError = _selectedVerificationMethod == null;
+      hasError = _emailErrorText != null || _passwordErrorText != null || _verificationError;
+    });
 
-    // Check if fields are empty and set error text
-    if (_emailController.text.isEmpty) {
-      setState(() {
-        _emailErrorText = 'Please enter your email.';
-      });
-    }
-
-    if (_passwordController.text.isEmpty) {
-      setState(() {
-        _passwordErrorText = 'Please enter your password.';
-      });
-    }
-
-    if (_selectedVerificationMethod == null) {
-      setState(() {
-        _verificationError = true;
-      });
-    }
-
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty || _selectedVerificationMethod == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please complete all fields.'),
-          duration: Duration(milliseconds: 2500),
-        ),
-      );
+    if (hasError) {
+      showToast('Please complete all fields.');
       return;
     }
 
+    // Set loading state
     setState(() {
       _isLoading = true;
     });
 
-    // Simulate login process
-    await Future.delayed(Duration(seconds: 2));
+    try {
+      // Perform authentication steps
+      await AuthService.fetchCsrfToken();
+      bool loginSuccess = await AuthService.login(_emailController.text, _passwordController.text);
 
-    setState(() {
-      _isLoading = false;
-    });
+      if (!loginSuccess) {
+        showToast("Login failed", isSuccess: false);
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
 
-    // TODO: Add actual login logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Login successful!')),
-    );
+      // Send verification code
+      await AuthService.sendCode();
+
+      // Navigate to MailAuthScreen (push on top of login screen)
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MailAuthScreen(selectedVerificationMethod: _selectedVerificationMethod!),
+        ),
+      );
+    } catch (error) {
+      // Handle errors gracefully
+      showToast("An error occurred. Please try again.", isSuccess: false);
+    } finally {
+      // Reset loading state
+      Future.delayed(Duration(milliseconds: 100), () {  // delayed because of Navigation push animation
+        setState(() {
+          _isLoading = false;
+        });
+      });
+    }
   }
 
   void _selectVerificationMethod() {
@@ -128,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 onTap: () {
                   setState(() {
-                    _selectedVerificationMethod = 'Manual Code Entry';
+                    _selectedVerificationMethod = 1;
                   });
                   Navigator.pop(context);
                 },
@@ -145,8 +171,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       builder: (BuildContext context) {
                         return AlertDialog(
                           title: Text('Information'),
-                          content: Text('Enter the confirmation code you\'ll receive in your inbox manually.'),
-                          actions: <Widget>[
+                            content: Text('Automatically forward the authentication email from DIGI to test.test@gmail.com. The app will read the inbox and retrieve your verification code for you.'),
+                            actions: <Widget>[
                             TextButton(
                               child: Text('Close'),
                               onPressed: () {
@@ -162,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 onTap: () {
                   setState(() {
-                    _selectedVerificationMethod = 'Email Forwarding';
+                    _selectedVerificationMethod = 2;
                   });
                   Navigator.pop(context);
                 },
@@ -189,242 +215,292 @@ class _LoginScreenState extends State<LoginScreen> {
         body: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Logo
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: Image.asset(
-                    'assets/icon/icon.png',
-                    height: 100,
-                    width: 100,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-
-                SizedBox(height: 32),
-
-                // Email Input
-                TextField(
-                  controller: _emailController,
-                  focusNode: _emailFocusNode,
-                  // Attach focus node
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.grey[200],
-                    labelText: 'Email',
-                    errorText: _emailErrorText,
-                    // Dynamically set errorText
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.transparent)),
-                    errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red)),
-                    // error color
-                    prefixIcon: Icon(
-                      Icons.email,
-                      color: _emailErrorText != null ? Colors.red : Color(0xFF007aff), // Icon color follows the error state
+            child: AutofillGroup(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Logo
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: Image.asset(
+                      'assets/icon/icon.png',
+                      height: 100,
+                      width: 100,
+                      fit: BoxFit.cover,
                     ),
                   ),
-                  onTap: () {
-                    setState(() {
-                      _emailErrorText = null; // Reset error when tapping
-                    });
-                  },
-                ),
 
-                SizedBox(height: 16),
+                  SizedBox(height: 32),
 
-                // Password Input
-                TextField(
-                  controller: _passwordController,
-                  focusNode: _passwordFocusNode,
-                  // Attach focus node
-                  obscureText: !_isPasswordVisible,
-                  // Toggle visibility based on _isPasswordVisible
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.grey[200],
-                    labelText: 'Password',
-                    errorText: _passwordErrorText,
-                    // Dynamically set errorText
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  // Email Input
+                  TextField(
+                    controller: _emailController,
+                    focusNode: _emailFocusNode,
+                    autofillHints: [AutofillHints.username],
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      labelText: 'Email',
+                      errorText: _emailErrorText,
+                      // Dynamically set errorText
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.transparent)),
+                      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.red)),
+                      // error color
+                      prefixIcon: Icon(
+                        Icons.email,
+                        color: _emailErrorText != null ? Colors.red : Color(0xFF007aff), // Icon color follows the error state
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.transparent),
+                    onTap: () {
+                      setState(() {
+                        _emailErrorText = null; // Reset error when tapping
+                      });
+                    },
+                  ),
+
+                  SizedBox(height: 16),
+
+                  // Password Input
+                  TextField(
+                    controller: _passwordController,
+                    focusNode: _passwordFocusNode,
+                    obscureText: !_isPasswordVisible,
+                    autofillHints: [AutofillHints.password],
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      labelText: 'Password',
+                      errorText: _passwordErrorText,
+                      // Dynamically set errorText
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.transparent),
+                      ),
+                      errorBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      // error color
+                      prefixIcon: Icon(
+                        Icons.lock,
+                        color: _passwordErrorText != null ? Colors.red : Color(0xFF007aff), // Icon color follows the error state
+                      ),
+                      suffixIcon: _passwordFocusNode.hasFocus // Show eye icon only when field is focused
+                          ? GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _isPasswordVisible = !_isPasswordVisible; // Toggle password visibility
+                                });
+                              },
+                              child: Icon(
+                                _isPasswordVisible ? Icons.visibility_off : Icons.visibility, // Toggle eye icon
+                                color: _passwordErrorText != null ? Colors.red : Color(0xff7a7a7a),
+                              ),
+                            )
+                          : null, // No suffix icon if the TextField is not focused
                     ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.red),
-                    ),
-                    // error color
-                    prefixIcon: Icon(
-                      Icons.lock,
-                      color: _passwordErrorText != null ? Colors.red : Color(0xFF007aff), // Icon color follows the error state
-                    ),
-                    suffixIcon: _passwordFocusNode.hasFocus // Show eye icon only when field is focused
-                        ? GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _isPasswordVisible = !_isPasswordVisible; // Toggle password visibility
-                              });
-                            },
-                            child: Icon(
-                              _isPasswordVisible ? Icons.visibility_off : Icons.visibility, // Toggle eye icon
-                              color: _passwordErrorText != null ? Colors.red : Color(0xff7a7a7a),
+                    onTap: () {
+                      setState(() {
+                        _passwordErrorText = null; // Reset error when tapping
+                      });
+                    },
+                  ),
+
+                  SizedBox(height: 24),
+
+                  // Verification Selector
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _selectVerificationMethod,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _verificationError ? Colors.red : Colors.grey[300]!,
+                              ),
                             ),
-                          )
-                        : null, // No suffix icon if the TextField is not focused
-                  ),
-                  onTap: () {
-                    setState(() {
-                      _passwordErrorText = null; // Reset error when tapping
-                    });
-                  },
-                ),
-
-                SizedBox(height: 24),
-
-                // Verification Selector
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _selectVerificationMethod,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _verificationError ? Colors.red : Colors.grey[300]!,
-                            ),
-                          ),
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      _selectedVerificationMethod == null
-                                          ? Icons.mail_lock
-                                          : _selectedVerificationMethod == 'Manual Code Entry'
-                                              ? Icons.code
-                                              : Icons.forward_to_inbox,
-                                      color: _verificationError ? Colors.red : Color(0xFF007aff),
-                                    ),
-                                    SizedBox(width: 8),
-                                    Flexible(
-                                      child: Text(
-                                        _selectedVerificationMethod == null ? 'Verification method' : '$_selectedVerificationMethod',
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        _selectedVerificationMethod == null
+                                            ? Icons.mail_lock
+                                            : _selectedVerificationMethod == 1
+                                                ? Icons.code
+                                                : Icons.forward_to_inbox,
+                                        color: _verificationError ? Colors.red : Color(0xFF007aff),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          verificationMethods.containsKey(_selectedVerificationMethod)
+                                              ? verificationMethods[_selectedVerificationMethod]!
+                                              : 'Verification method',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                            color: _verificationError
+                                                ? Colors.red
+                                                : _selectedVerificationMethod == null
+                                                    ? Color.fromRGBO(107, 117, 117, 1.0)
+                                                    : Colors.black,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.all(10),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit, color: Color(0xFF007aff), size: 18),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        _selectedVerificationMethod == null ? 'Select' : 'Change',
                                         style: TextStyle(
                                           fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                          color: _verificationError
-                                              ? Colors.red
-                                              : _selectedVerificationMethod == null
-                                                  ? Color.fromRGBO(107, 117, 117, 1.0)
-                                                  : Colors.black,
+                                          color: Color(0xFF007aff),
+                                          fontWeight: FontWeight.w600,
                                         ),
-                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.all(10),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.edit, color: Color(0xFF007aff), size: 18),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      _selectedVerificationMethod == null ? 'Select' : 'Change',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Color(0xFF007aff),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-                SizedBox(height: 24),
+                  SizedBox(height: 24),
 
-                // Login Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _performLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isLoading ? Colors.grey : Color(0xFF007aff),
-                      // Button color
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
+                  // Login Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _performLogin,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isLoading ? Colors.grey : Color(0xFF007aff),
+                        // Button color
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        shadowColor: Colors.black26,
+                        elevation: 5,
                       ),
-                      shadowColor: Colors.black26,
-                      elevation: 5,
-                    ),
-                    child: _isLoading
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
+                      child: _isLoading
+                          ? SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text(
+                              'Login',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
                             ),
-                          )
-                        : Text(
-                            'Login',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
-
-                SizedBox(height: 16),
-
-                // Forgot Password
-                GestureDetector(
-                  onTap: () {
-                    // TODO:
-                  },
-                  child: Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                      color: Color(0xFF007aff),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-              ],
+
+                  SizedBox(height: 16),
+
+                  // Forgot Password
+                  GestureDetector(
+                    onTap: () {
+                      // TODO:
+                    },
+                    child: Text(
+                      'Forgot Password?',
+                      style: TextStyle(
+                        color: Color(0xFF007aff),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
+  void showToast(String message, {bool? isSuccess}) {
+    // Determine the style based on isSuccess
+    Color backgroundColor;
+    IconData? icon;
+
+    if (isSuccess == true) {
+      backgroundColor = Colors.greenAccent;
+      icon = Icons.check;
+    } else if (isSuccess == false) {
+      backgroundColor = Colors.redAccent;
+      icon = Icons.close;
+    } else {
+      backgroundColor = Colors.grey;
+      icon = null;
+    }
+
+    // Create the toast widget
+    Widget toast = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(25.0),
+        color: backgroundColor,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: Colors.white),
+            const SizedBox(width: 12.0),
+          ],
+          Text(
+            message,
+            style: const TextStyle(color: Colors.white),
+          ),
+        ],
+      ),
+    );
+
+    // Show the toast
+    fToast.showToast(
+      child: toast,
+      gravity: ToastGravity.BOTTOM,
+      toastDuration: const Duration(seconds: 3),
+    );
+  }
+
 }
