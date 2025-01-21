@@ -1,11 +1,12 @@
 import 'package:http/http.dart' as http;
 import 'package:html/parser.dart';
+import 'package:html/dom.dart' as html;
 
 import '../utils/cookie_utils.dart';
 
 class ScrapingService {
   // This method scrapes the given URL and extracts and converts mobile usage data to KB
-  static Future<Map<String, int>?> scrapeMobileUsageInKB(String url) async {
+  static Future<Map<String, dynamic>?> scrapeMobileUsageInKB(String url) async {
     try {
       // Get the session token from the cookies
       final sessionToken = getCookie('__Secure-authjs.session-token');
@@ -16,45 +17,49 @@ class ScrapingService {
         headers: {'Cookie': '__Secure-authjs.session-token=$sessionToken'},
       );
 
-      if (response.statusCode == 200) {
-        // Parse the HTML response
-        var document = parse(response.body);
+      if (response.statusCode != 200) throw new Exception("Status code not 200");
 
-        // Look for the specific HTML structure containing the mobile data
-        final mobileUsageElement = document.querySelector('.card-progress-title span');
+      // Parse the HTML response
+      var document = parse(response.body);
 
-        if (mobileUsageElement != null) {
-          // Extract the text, which is in the format "873.00 MB / 15.00 GB"
-          String usageText = mobileUsageElement.text.trim();
+      // Look for the specific HTML structure containing the mobile data
+      final allProducts = document.querySelectorAll('.card-progress');
+      List<List<dynamic>> scrapedProducts = [];
 
-          // Split the text into the two parts
-          List<String> parts = usageText.split(' / ');
+      for (html.Element product in allProducts) {
+        final type = product.querySelector('h6')?.text ?? '';
+        final mobileNumber = product.querySelector('p')?.text ?? '';
 
-          // Extract the current usage (in MB) and the limit (in GB)
-          String currentUsageStr = parts.isNotEmpty ? parts[0].trim() : '0 MB'; // Default to '0 MB' if missing
-          String dataLimitStr = parts.length > 1 ? parts[1].trim() : '15 GB'; // Default to '15 GB' if missing
+        final dataInfo = product.querySelectorAll('.card-progress-title span');
 
-          // Extract the numeric values and convert to KB
-          int currentUsageKB = _convertToKB(currentUsageStr);
-          int dataLimitKB = _convertToKB(dataLimitStr);
+        final used = (dataInfo.isNotEmpty) ? dataInfo[0].text ?? '0 MB' : '0 MB';
+        final available = (dataInfo.length > 2) ? dataInfo[2].text ?? '15 GB' : '15 GB';
 
-          // Return the values as a map
-          return {
-            'currentUsageKB': currentUsageKB,
-            'dataLimitKB': dataLimitKB,
-          };
-        } else {
-          return null;
-        }
-      } else {
-        return null;
+        final usedKb = _convertToKB(used);
+        final availableKb = _convertToKB(available);
+
+        scrapedProducts.add([
+          type,
+          mobileNumber,
+          usedKb,
+          availableKb,
+        ]);
       }
+
+      String? usageInfo = document.querySelector('.info-box-message p')?.text;
+
+      // Return the result as a Map with key "products"
+      return {
+        'products': scrapedProducts,
+        'usageInfo': usageInfo,
+      };
     } catch (e) {
       // Handle errors, e.g., network issues
       print("Error during scraping: $e");
-      return null;
+      rethrow;
     }
   }
+
 
   // Helper method to convert MB/GB to KB
   static int _convertToKB(String value) {
@@ -67,5 +72,4 @@ class ScrapingService {
       throw FormatException("Unsupported unit in $value");
     }
   }
-
 }

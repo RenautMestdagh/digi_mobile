@@ -1,4 +1,6 @@
+import 'package:digi_mobile/src/screens/login_screen.dart';
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import '../services/scraping_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -7,9 +9,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int? currentUsageKB = 0;
-  int? dataLimitKB = 0;
-  double usagePercentage = 0.0;
+  Future<Map<String, dynamic>?> scrapedData = Future.value(null);
 
   @override
   void initState() {
@@ -17,168 +17,236 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchData();
   }
 
-  // Fetch data when the screen loads
+  // Fetch data when the screen loads or refreshed
   Future<void> _fetchData() async {
     String url = "https://www.digi-belgium.be/en/my-digi/overview";
-    Map<String, int>? mobileUsageInKB = await ScrapingService.scrapeMobileUsageInKB(url);
-
-    if (mobileUsageInKB != null) {
-      setState(() {
-        currentUsageKB = mobileUsageInKB['currentUsageKB'];
-        dataLimitKB = mobileUsageInKB['dataLimitKB'];
-        if (currentUsageKB != null && dataLimitKB != null) {
-          usagePercentage = currentUsageKB! / dataLimitKB!; // Calculate usage percentage
-        }
-      });
-    }
+    scrapedData = ScrapingService.scrapeMobileUsageInKB(url);
+    setState(() {});
   }
 
   // Convert KB to MB or GB
   String formatData(int? dataKB) {
     if (dataKB == null) return '0.0 MB';
-    double dataMB = dataKB / 1000;
-    if (dataMB > 1000) {
-      return '${(dataMB / 1000).toStringAsFixed(2)} GB';
+
+    double value = dataKB.toDouble();
+    const units = ['KB', 'MB', 'GB'];
+
+    int unitIndex = 0;
+    while (value >= 1000 && unitIndex < units.length - 1) {
+      value /= 1000;
+      unitIndex++;
     }
-    return '${dataMB.toStringAsFixed(2)} MB';
+
+    return '${value.toStringAsFixed(2)} ${units[unitIndex]}';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blueGrey[50], // Soft background color
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Main usage container with rounded corners
-            Container(
-              padding: EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    spreadRadius: 2,
+      backgroundColor: Color.fromRGBO(233, 237, 239, 1.0),
+      body: Stack(
+        children: [
+          Positioned(
+            top: 50,
+            right: 30,
+            child: IconButton(
+              icon: Icon(Icons.exit_to_app, color: Colors.red),
+              onPressed: () {
+                AuthService.signout();
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LoginScreen(),
                   ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Title of the section
-                  Text(
-                    'Mobile Data Usage',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blueGrey[900],
-                    ),
-                  ),
-                  SizedBox(height: 16),
-
-                  // Display current usage and data limit in MB/GB
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Column(
-                        children: [
-                          Text(
-                            'Current Usage',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                          Text(
-                            formatData(currentUsageKB),
-                            style: TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      SizedBox(width: 30),
-                      Column(
-                        children: [
-                          Text(
-                            'Data Limit',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                          Text(
-                            formatData(dataLimitKB),
-                            style: TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 24),
-
-                  // Display usage percentage as a circular progress indicator
-                  // Circular progress indicator with grey remainder and larger size
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Grey circle background
-                      SizedBox(
-                        width: 75, // Increase the size of the circle
-                        height: 75, // Increase the size of the circle
-                        child: CircularProgressIndicator(
-                          value: 1.0, // Always full circle for grey background
-                          strokeWidth: 7,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.grey[300]!),
-                        ),
-                      ),
-                      // Colored progress circle
-                      SizedBox(
-                        width: 75, // Same size for both circles
-                        height: 75, // Same size for both circles
-                        child: CircularProgressIndicator(
-                          value: usagePercentage,
-                          strokeWidth: 7,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            usagePercentage >= 0.8
-                                ? Colors.red
-                                : usagePercentage >= 0.5
-                                ? Colors.orange
-                                : Colors.green,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 24),
-
-                  // Display usage percentage as a text
-                  Text(
-                    '${(usagePercentage * 100).toStringAsFixed(1)}%',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: usagePercentage >= 0.8
-                          ? Colors.red
-                          : usagePercentage >= 0.5
-                          ? Colors.orange
-                          : Colors.green,
-                    ),
-                  ),
-                ],
+                );
+              },
+            ),
+          ),
+          Positioned(
+            top: 60,
+            left: MediaQuery.of(context).size.width / 2 - 75,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20), // Rounded corners for logo
+              child: Image.asset(
+                'assets/logo.png',
+                height: 150, // Bigger logo
+                width: 150,
+                fit: BoxFit.cover,
               ),
             ),
-            SizedBox(height: 40),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 250),
+            child: RefreshIndicator(
+              onRefresh: _fetchData, // Pull-to-refresh functionality
+              child: FutureBuilder<Map<String, dynamic>?>(
+                future: scrapedData,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  } else if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error loading data',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.red,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    );
+                  } else if (snapshot.hasData && snapshot.data != null && snapshot.data!['products'] != null) {
+                    List<List<dynamic>> data = snapshot.data!['products'];
+                    String? usageInfo = snapshot.data!['usageInfo'];
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: ListView(
+                            children: data.map((item) {
+                              String type = item[0];
+                              String phoneNumber = item[1];
+                              int usedKB = item[2];
+                              int availableKB = item[3];
+                              double usagePercentage = usedKB / (usedKB + availableKB);
 
-            // Display fallback message if no data is fetched
-            if (currentUsageKB == 0 || dataLimitKB == 0)
-              Text(
-                'No data available.',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey,
-                  fontStyle: FontStyle.italic,
-                ),
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 24.0, right: 24.0),
+                                child: Container(
+                                  padding: EdgeInsets.all(24),
+                                  margin: EdgeInsets.only(bottom: 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 10,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                type,
+                                                style: TextStyle(
+                                                  fontSize: 26,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.blueGrey[900],
+                                                ),
+                                              ),
+                                              Text(
+                                                phoneNumber,
+                                                style: TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w300,
+                                                  color: Colors.blueGrey[900],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Transform.scale(
+                                            scale: 0.75,
+                                            child: CircularProgressIndicator(
+                                              value: usagePercentage,
+                                              strokeWidth: 7.5,
+                                              strokeCap: StrokeCap.round,
+                                              backgroundColor: Color.fromRGBO(218, 218, 218, 1.0),
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                usagePercentage >= 0.9
+                                                    ? Colors.red
+                                                    : usagePercentage >= 0.7
+                                                    ? Colors.orange
+                                                    : Colors.green,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: 45),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                        children: [
+                                          Column(
+                                            children: [
+                                              Text(
+                                                'Current Usage',
+                                                style: TextStyle(fontSize: 16, color: Colors.grey),
+                                              ),
+                                              Text(
+                                                formatData(usedKB),
+                                                style: TextStyle(
+                                                  fontSize: 22,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Column(
+                                            children: [
+                                              Text(
+                                                'Data Limit',
+                                                style: TextStyle(fontSize: 16, color: Colors.grey),
+                                              ),
+                                              Text(
+                                                formatData(availableKB),
+                                                style: TextStyle(
+                                                  fontSize: 22,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        if (usageInfo != null)
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              usageInfo,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color.fromRGBO(110, 110, 110, 1.0),
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  } else {
+                    return Center(
+                      child: Text(
+                        'No data available.',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    );
+                  }
+                },
               ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }

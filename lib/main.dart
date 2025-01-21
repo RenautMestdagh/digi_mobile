@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:digi_mobile/src/screens/home_screen.dart';
+import 'package:digi_mobile/src/utils/cookie_persistence.dart';
+import 'package:digi_mobile/src/utils/cookie_utils.dart';
 import 'src/screens/login_screen.dart';
 
 GlobalKey navigatorKey = GlobalKey();
@@ -10,14 +13,27 @@ void main() {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: loadCookiesFromSharedPreferences(),  // Wait for cookies to load
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return MaterialApp(
+            key: navigatorKey,
+            title: 'DIGI Mobile',
+            home: Scaffold(body: Center(child:CircularProgressIndicator())),  // Show loading indicator while loading cookies
+          );
+        }
 
-    return MaterialApp(
-      key: navigatorKey,
-      title: 'Flutter Digi Login',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: LoginScreen(),
+        // Once cookies are loaded, check for the session cookie and navigate accordingly
+        return MaterialApp(
+          key: navigatorKey,
+          title: 'DIGI Mobile',
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+          ),
+          home: getCookie('__Secure-authjs.session-token') == null ? LoginScreen() : HomeScreen(),
+        );
+      },
     );
   }
 }

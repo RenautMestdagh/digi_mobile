@@ -129,79 +129,87 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               SizedBox(height: 16),
-              ListTile(
-                leading: Icon(Icons.code, color: Color(0xFF007aff)),
-                title: Text('Enter Code Manually'),
-                subtitle: Text('Input the verification code sent to your email.'),
-                trailing: GestureDetector(
-                  onTap: () {
-                    // Show the modal with additional information when the info icon is tapped
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text('Information'),
-                          content: Text('Enter the confirmation code you\'ll receive in your inbox manually.'),
-                          actions: <Widget>[
-                            TextButton(
-                              child: Text('Close'),
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                  child: Padding(padding: EdgeInsets.all(5), child: Icon(Icons.info_outline, color: Colors.grey)),
+              // First ListTile with rounded corners
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15.0),
                 ),
-                onTap: () {
-                  setState(() {
-                    _selectedVerificationMethod = 1;
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: Icon(Icons.forward_to_inbox, color: Color(0xFF007aff)),
-                title: Text('Forward Email to App'),
-                subtitle: Text('Forward the email to a mailbox the app can access.'),
-                trailing: GestureDetector(
-                  onTap: () {
-                    // Show the modal with additional information when the info icon is tapped
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text('Information'),
-                            content: Text('Automatically forward the authentication email from DIGI to test.test@gmail.com. The app will read the inbox and retrieve your verification code for you.'),
+                child: ListTile(
+                  leading: Icon(Icons.code, color: Color(0xFF007aff)),
+                  title: Text('Enter Code Manually'),
+                  subtitle: Text('Input the verification code sent to your email.'),
+                  trailing: GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text('Information'),
+                            content: Text('Enter the confirmation code you\'ll receive in your inbox manually.'),
                             actions: <Widget>[
-                            TextButton(
-                              child: Text('Close'),
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    );
+                              TextButton(
+                                child: Text('Close'),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    child: Padding(padding: EdgeInsets.all(5), child: Icon(Icons.info_outline, color: Colors.grey)),
+                  ),
+                  onTap: () {
+                    setState(() {
+                      _selectedVerificationMethod = 1;
+                    });
+                    Navigator.pop(context);
                   },
-                  child: Padding(padding: EdgeInsets.all(5), child: Icon(Icons.info_outline, color: Colors.grey)),
                 ),
-                onTap: () {
-                  setState(() {
-                    _selectedVerificationMethod = 2;
-                  });
-                  Navigator.pop(context);
-                },
+              ),
+              // Second ListTile with rounded corners (disabled)
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15.0),
+                  color: Colors.grey.shade300,
+                ),
+                child: ListTile(
+                  leading: Icon(Icons.forward_to_inbox, color: Color(0xFF007aff)),
+                  title: Text('Forward Email to App'),
+                  subtitle: Text('Coming soon.'),
+                  // trailing: GestureDetector(
+                  //   onTap: () {
+                  //     showDialog(
+                  //       context: context,
+                  //       builder: (BuildContext context) {
+                  //         return AlertDialog(
+                  //           title: Text('Information'),
+                  //           content: Text('Automatically forward the authentication email from DIGI to test.test@gmail.com. The app will read the inbox and retrieve your verification code for you.'),
+                  //           actions: <Widget>[
+                  //             TextButton(
+                  //               child: Text('Close'),
+                  //               onPressed: () {
+                  //                 Navigator.of(context).pop();
+                  //               },
+                  //             ),
+                  //           ],
+                  //         );
+                  //       },
+                  //     );
+                  //   },
+                  //   child: Padding(padding: EdgeInsets.all(5), child: Icon(Icons.info_outline, color: Colors.grey)),
+                  // ),
+                  onTap: null,  // Disable the tap action
+                  enabled: false,  // Disable the interaction
+                ),
               ),
             ],
           ),
         );
       },
     );
+
   }
 
   @override
@@ -436,22 +444,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  SizedBox(height: 16),
-
-                  // Forgot Password
-                  GestureDetector(
-                    onTap: () {
-                      // TODO:
-                    },
-                    child: Text(
-                      'Forgot Password?',
-                      style: TextStyle(
-                        color: Color(0xFF007aff),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+                  // SizedBox(height: 16),
+                  //
+                  // // Forgot Password
+                  // GestureDetector(
+                  //   onTap: () {
+                  //     // TODO:
+                  //   },
+                  //   child: Text(
+                  //     'Forgot Password?',
+                  //     style: TextStyle(
+                  //       color: Color(0xFF007aff),
+                  //       fontSize: 14,
+                  //       fontWeight: FontWeight.w500,
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
             ),
