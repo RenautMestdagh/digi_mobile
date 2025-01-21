@@ -1,16 +1,25 @@
-# digi_mobile
+# Digi Mobile App
 
-A new Flutter project.
+*Unofficial App*
 
-## Getting Started
+## Overview
 
-This project is a starting point for a Flutter application.
+This is an unofficial mobile app for [Digi Belgium](https://www.digi-belgium.be/), a telecom provider. The app is still under active development and is not affiliated with Digi in any way.
 
-A few resources to get you started if this is your first Flutter project:
+## Features
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+* Reverse-engineered login process
+* Web scraping for account data and usage statistics
+* Ongoing development and feature expansion
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Screenshots
+
+![Screenshot 1](screenshots/Screenshot_1.png)
+![Screenshot 2](screenshots/Screenshot_2.png)
+![Screenshot 3](screenshots/Screenshot_3.png)
+
+## Disclaimer
+
+This app is not affiliated with or endorsed by Digi Belgium. It is an independent project developed for educational purposes and personal use.
+
+**Feel free to customize or expand further if needed!**
